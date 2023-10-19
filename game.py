@@ -2,6 +2,7 @@ import pygame as pg
 from math import cos, sin, tan, pi
 import time
 from settings import *
+from enemies import *
 
 pg.init()
 
@@ -23,6 +24,8 @@ def load_wall_textures():
 
 objects = [pg.rect.Rect(0, 0, WIDTH, 100), pg.rect.Rect(WIDTH-100, 0, 100, HEIGHT), pg.rect.Rect(0, HEIGHT-100, WIDTH, 100), pg.rect.Rect(0, 0, 100, HEIGHT), pg.rect.Rect(200, 200, 100, 100), pg.rect.Rect(400, 600, 100, 25)]
 objectTypes = [0, 0, 0, 0, 1, 1]
+
+enemies = []
 
 textures = load_wall_textures()
 
@@ -61,6 +64,8 @@ class Player:
 
         distanceMultiplier = 2
 
+        y_buff = []
+
         for i in range(int(DISTANCE/distanceMultiplier)):
             for e, obj in enumerate(objects):
                 if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
@@ -68,7 +73,16 @@ class Player:
                         l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
                         pg.display.update(l)
 
-                    return i *distanceMultiplier, (x, y), obj, e
+                    y_buff.append((i *distanceMultiplier, (x, y), obj, e, False))
+                    return y_buff
+
+            for e, enemy in enumerate(enemies):
+                if x > enemy.x - enemy.image.get_width() / 2 and x < enemy.x + enemy.image.get_width() / 2 and y > enemy.y - enemy.image.get_height() / 2 and y < enemy.y + enemy.image.get_height() / 2:
+                    if debug:
+                        l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
+                        pg.display.update(l)
+
+                    y_buff.append((i *distanceMultiplier, (x, y), enemy, e, True))
 
             x += grad[0] *distanceMultiplier
             y += grad[1] *distanceMultiplier
@@ -77,7 +91,8 @@ class Player:
             l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
             pg.display.update(l)
 
-        return DISTANCE, (x, y), None, None
+        y_buff.append((DISTANCE, (x, y), None, None, False))
+        return y_buff
 
     def rayTrace(self, plainMap, objects) -> list:
         y_buff = []
@@ -85,12 +100,66 @@ class Player:
 
         for i in range(int(self.num_rays + 1)):
             #print((i+1)*rayAngle)
-            distance, endPoint, obj, index = self.drawRay((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
-            distance *= cos(self.rot - (self.rot - self.fov / 2) + (i) * rayAngle + pi/2)
+            ret = self.drawRay((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
             #print((self.rot - self.fov / 2) + (i+1) * rayAngle * 57.2957795 * 21.333333333333)
-            y_buff.append((distance, endPoint, (self.rot - self.fov / 2) + i * rayAngle * 57.2957795 * 13.25, obj, index))
+            for distance, endPoint, obj, index, enemy in ret:
+                distance *= cos(self.rot - (self.rot - self.fov / 2) + (i) * rayAngle + pi/2)
+                y_buff.append((distance, endPoint, (self.rot - self.fov / 2) + i * rayAngle * 57.2957795 * 13.25, obj, index, enemy))
 
         return y_buff
+    
+    def castGunRay(self, plainMap, objects):
+        rayAngle = self.rot
+        x = int(self.x)
+        y = int(self.y)
+
+        ox = x
+        oy = y
+
+        grad = (cos(rayAngle), sin(rayAngle))
+
+        distanceMultiplier = 2
+
+        for i in range(int(DISTANCE/distanceMultiplier)):
+            for e, enemy in enumerate(enemies):
+                if x > enemy.x - enemy.image.get_width() / 2 and x < enemy.x + enemy.image.get_width() / 2 and y > enemy.y - enemy.image.get_height() / 2 and y < enemy.y + enemy.image.get_height() / 2:
+                    if debug:
+                        l = pg.draw.line(screen, (255, 0, 255), (ox, oy), (x, y))
+                        pg.display.update(l)
+                    return e
+
+            x += grad[0] *distanceMultiplier
+            y += grad[1] *distanceMultiplier
+    
+class Gun(pg.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.idle = pg.image.load("shotgun/0.png").convert_alpha()
+        self.idle = pg.transform.scale(self.idle, (int(self.idle.get_width() / 6), int(self.idle.get_height() / 3)))
+        self.shoot = [pg.image.load("shotgun/1.png").convert_alpha(), pg.image.load("shotgun/2.png").convert_alpha(), pg.image.load("shotgun/3.png").convert_alpha(), pg.image.load("shotgun/4.png").convert_alpha(), pg.image.load("shotgun/5.png").convert_alpha()]
+        self.shoot = [pg.transform.scale(i, (int(i.get_width() / 6), int(i.get_height() / 3))) for i in self.shoot]
+        self.allAnimations = [self.idle]
+        self.allAnimations.extend(self.shoot)
+        self.currentAnimation = 0
+        self.image = self.allAnimations[self.currentAnimation]
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH/2, HEIGHT/2)
+        self.lastAnimation = time.time()
+        self.animationSpeed = 0.1
+        self.shooting = False
+        self.rect.y = HEIGHT - self.rect.height
+
+    def update(self):
+        if self.shooting:
+            if self.currentAnimation < len(self.allAnimations) - 1:
+                if self.lastAnimation < time.time() - self.animationSpeed:
+                    self.currentAnimation += 1
+                    self.image = self.allAnimations[self.currentAnimation]
+                    self.lastAnimation = time.time()
+            else:
+                self.shooting = False
+                self.currentAnimation = 0
+                self.image = self.allAnimations[self.currentAnimation]
     
 def main(width, height, resolution_scale, fov, color_darken_scale):
     global dt
@@ -103,6 +172,8 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
     global RESOLUTION_SCALE
     global FOV
     global COLOR_DARKEN_SCALE
+
+    global enemies
 
     WIDTH = width
     HEIGHT = height
@@ -119,6 +190,10 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
     lastSwitch = time.time()
     lastDt = time.time()
 
+    gun = Gun()
+
+    enemies = [caco(500, 500), caco(1000, 500)]
+
     clock = pg.time.Clock()
     running = True
     while running:
@@ -132,11 +207,15 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
         pg.draw.rect(screen, (0, 100, 255), (0, 0, WIDTH, HEIGHT/2))
         pg.draw.rect(screen, (140, 100, 0), (0, HEIGHT/2, WIDTH, HEIGHT))
 
+        for enemy in enemies:
+            if enemy.update(dt, player.x, player.y, objects):
+                player.dead = True
+
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
                 running = False
-
+ 
         if running == False:
             break
 
@@ -169,14 +248,25 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
         elif player.rot < -(pi*2):
             player.rot = 0
 
-        if keys[pg.K_SPACE] and lastSwitch < time.time() - 0.5:
+        if keys[pg.K_LSHIFT] and lastSwitch < time.time() - 0.5:
             global debug
             debug = not debug
             lastSwitch = time.time()
 
+        if keys[pg.K_SPACE]:
+            gun.shooting = True
+            objHit = player.castGunRay(plainMap, enemies)
+
+            if objHit != None:
+                enemies.pop(objHit)
+
         if debug:
             for obj in objects:
                 pg.draw.rect(screen, (255, 255, 255), obj)
+
+            for enemy in enemies:
+                smallEnemy = pg.transform.scale(enemy.image, (enemy.image.get_width() // 2, enemy.image.get_height() // 2))
+                screen.blit(smallEnemy, enemy.rect)
 
         y_buff = player.rayTrace(plainMap, objects)
 
@@ -186,6 +276,10 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
 
             lastObj = 99999999999
             x_clip_start = 0
+
+            enemiesRendered = []
+            enemyDistances = []
+            enemiesEx = []
 
             for y in y_buff:
                 if y[4] == None:
@@ -201,6 +295,15 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
                 # y[2] = angle
                 # y[3] = object
                 # y[4] = object index
+                # y[5] = enemy
+
+                if y[5]:
+                    if y[3].dead or y[3] in enemiesEx:
+                        continue
+                    enemiesRendered.append(y)
+                    enemyDistances.append(y[0])
+                    enemiesEx.append(y[3])
+                    continue
 
                 proj_height = abs((SCREEN_DIST / (y[0] + 0.01)) * 100)
 
@@ -231,9 +334,27 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
 
                 RECTS_ON_SCREEN += 1
 
+            for i, enemy in enumerate(enemiesRendered):
+                distance = enemy[0]
+                endpoint = enemy[1]
+                angle = enemy[2]
+                obj = enemy[3]
+                index = enemy[4]
+                enemy = enemy[5]
+                color = min(255, abs(255 / ((distance + 0.01) / COLOR_DARKEN_SCALE)))
+                texture = obj.image
+                texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
+                # scale texture to distance
+                proj_height = abs((SCREEN_DIST / (distance + 0.01)) * 100)
+                texture = pg.transform.scale(texture, (obj.image.get_width() // 2 * int(proj_height) / 100, obj.image.get_height() // 2 * int(proj_height) / 100))
+                screen.blit(texture, (angle + (WIDTH/2 - player.x), HEIGHT/3))
+
         RAY_HITS = RECTS_ON_SCREEN / (1200 / RESOLUTION_SCALE + 1) * 100
+
+        gun.update()
+        screen.blit(gun.image, gun.rect)
 
         pg.display.flip()
 
 if __name__ == "__main__":
-    main()
+    main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE)
