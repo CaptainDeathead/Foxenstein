@@ -4,13 +4,16 @@ import time
 from settings import *
 from enemies import *
 from random import randint
+import os
 
 pg.init()
 
 dt = 1
 debug = False
 
-UiText = pg.font.SysFont("Arial", 22)
+UiText = pg.font.SysFont("arial", 30)
+pg.mouse.set_visible(False)
+pg.event.set_grab(True)
 
 def get_texture(path, res=(TEXTURE_SIZE, TEXTURE_SIZE)):
     texture = pg.image.load(path)
@@ -38,9 +41,10 @@ class Player:
         self.rot = rot
         self.num_rays = num_rays
         self.fov = FOV
-        self.move_speed = 5
+        self.move_speed = 2.5
         self.rot_speed = 0.05
         self.health = 5
+        self.score = 0
 
     def move(self, dx, dy):
         new_x = self.x + dx * dt * 32
@@ -65,18 +69,16 @@ class Player:
 
         grad = (cos(angle), sin(angle))
 
-        distanceMultiplier = 2
-
         y_buff = []
 
-        for i in range(int(DISTANCE/distanceMultiplier)):
+        for i in range(int(DISTANCE)):
             for e, obj in enumerate(objects):
                 if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
                     if debug:
                         l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
                         pg.display.update(l)
 
-                    y_buff.append((i *distanceMultiplier, (x, y), obj, e, False))
+                    y_buff.append((i, (x, y), obj, e, False))
                     return y_buff
 
             for e, enemy in enumerate(enemies):
@@ -85,10 +87,10 @@ class Player:
                         l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
                         pg.display.update(l)
 
-                    y_buff.append((i *distanceMultiplier, (x, y), enemy, e, True))
+                    y_buff.append((i, (x, y), enemy, e, True))
 
-            x += grad[0] *distanceMultiplier
-            y += grad[1] *distanceMultiplier
+            x += grad[0]
+            y += grad[1]
 
         if debug:
             l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
@@ -111,7 +113,7 @@ class Player:
 
         return y_buff
     
-    def castGunRay(self, plainMap, objects):
+    def castGunRay(self, plainMap, objects, enemies):
         rayAngle = self.rot
         x = int(self.x)
         y = int(self.y)
@@ -124,8 +126,15 @@ class Player:
         distanceMultiplier = 2
 
         for i in range(int(DISTANCE/distanceMultiplier)):
+            for e, obj in enumerate(objects):
+                if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
+                    if debug:
+                        l = pg.draw.line(screen, (255, 0, 255), (ox, oy), (x, y))
+                        pg.display.update(l)
+                    return None
+                
             for e, enemy in enumerate(enemies):
-                if x > enemy.x - enemy.image.get_width() / 2 and x < enemy.x + enemy.image.get_width() / 2 and y > enemy.y - enemy.image.get_height() / 2 and y < enemy.y + enemy.image.get_height() / 2:
+                if x > enemy.x - enemy.image.get_width() / 2.5 and x < enemy.x + enemy.image.get_width() / 2.5 and y > enemy.y - enemy.image.get_height() / 2.5 and y < enemy.y + enemy.image.get_height() / 2.5:
                     if debug:
                         l = pg.draw.line(screen, (255, 0, 255), (ox, oy), (x, y))
                         pg.display.update(l)
@@ -153,6 +162,7 @@ class Gun(pg.sprite.Sprite):
         self.animationSpeed = 0.1
         self.shooting = False
         self.rect.y = HEIGHT - self.rect.height
+        self.shootSound = pg.mixer.Sound("sounds/shotgun.wav")
 
     def update(self):
         if self.shooting:
@@ -166,7 +176,7 @@ class Gun(pg.sprite.Sprite):
                 self.currentAnimation = 0
                 self.image = self.allAnimations[self.currentAnimation]
     
-def main(width, height, resolution_scale, fov, color_darken_scale):
+def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     global dt
     global RECTS_ON_SCREEN
     global RAY_HITS
@@ -186,12 +196,12 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
     FOV = fov
     COLOR_DARKEN_SCALE = color_darken_scale
 
-    screen = pg.display.set_mode((WIDTH, HEIGHT))
+    screen = pg.display.set_mode((WIDTH, HEIGHT), pg.DOUBLEBUF | pg.HWACCEL)
     pg.display.set_caption("Foxenstine")
 
     plainMap = []
     #objects = [pg.rect.Rect(200, 200, 100, 100), pg.rect.Rect(400, 600, 100, 25)]
-    player = Player(600, 300, 3.14159265, int(WIDTH)/RESOLUTION_SCALE)
+    player = Player(600, 600, 3.14159265, int(WIDTH)/RESOLUTION_SCALE)
     lastSwitch = time.time()
     lastDt = time.time()
 
@@ -199,9 +209,36 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
 
     enemies = [caco(500, 500), caco(1000, 500)]
 
+    theme = pg.mixer.Sound("sounds/theme.mp3")
+    enemyHurt = pg.mixer.Sound("sounds/npc_pain.wav")
+    enemyDeath = pg.mixer.Sound("sounds/npc_death.wav")
+    playerPain = pg.mixer.Sound("sounds/player_pain.wav")
+    # play theme 70% volume and loop forever
+    theme.play(-1)
+    theme.set_volume(0.7)
+
+    try:
+        with open(f"maps/{gameMap}.py", "r") as f:
+            data = f.read()
+            f.close()
+    except FileNotFoundError:
+        pg.quit()
+        return
+    
+    with open("tempGameLoader.py", "w") as f:
+        f.write(data)
+        f.close()
+
+    import tempGameLoader
+
+    objects, objectTypes = tempGameLoader.loadMap()
+
+    os.remove("tempGameLoader.py")
+
     clock = pg.time.Clock()
     running = True
     while running:
+        pg.event.set_grab(True)
         clock.tick(60)
         pg.display.set_caption("Foxenstine!!!    |    FPS: " + str(int(clock.get_fps())) + "    Delta time: " + str(round(dt, 2)) + "    Resolution Scale: " + str(RESOLUTION_SCALE) + "    Resolution: " + str(WIDTH) + "x" + str(HEIGHT) + "    FOV: " + str(FOV) + "    Ray Hits: " + str(int(RAY_HITS)) + "%" + "    Color darken scale: " + str(COLOR_DARKEN_SCALE))
         screen.fill((0,0,0))
@@ -216,6 +253,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
             updateResult = enemy.update(dt, player.x, player.y, objects)
             if updateResult > 0 and updateResult <= CACO_ATK_DIST:
                 player.health -= 1
+                playerPain.play()
                 if player.health <= 0:
                     pg.quit()
                     running = False
@@ -224,9 +262,12 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
             break
 
         for event in pg.event.get():
-            if event.type == pg.QUIT:
+            if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
                 pg.quit()
                 running = False
+            if event.type == pg.MOUSEMOTION:
+                player.rot += event.rel[0] * 0.002
+                player.rot += event.rel[1] * 0.002
  
         if running == False:
             break
@@ -265,13 +306,22 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
             debug = not debug
             lastSwitch = time.time()
 
-        if keys[pg.K_SPACE]:
-            gun.shooting = True
-            objHit = player.castGunRay(plainMap, enemies)
+        if keys[pg.K_SPACE] or pg.mouse.get_pressed()[0]:
+            if not gun.shooting:
+                gun.shootSound.play()
+                gun.shooting = True
+                objHit = player.castGunRay(plainMap, objects, enemies)
 
-            if objHit != None:
-                objHit.x = randint(200, WIDTH - 200)
-                objHit.y = randint(200, HEIGHT - 200)
+                if objHit != None:
+                    objHit.health -= 1
+                    if objHit.health <= 0:
+                        enemyDeath.play()
+                        objHit.dead = True
+                        player.score += 1
+                        enemies.remove(objHit)
+                        enemies.append(caco(randint(100, WIDTH-100), randint(100, HEIGHT-100)))
+                    else:
+                        enemyHurt.play()
 
         if debug:
             for obj in objects:
@@ -355,9 +405,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
                 obj = enemy[3]
                 index = enemy[4]
                 enemy = enemy[5]
-                color = min(255, abs(255 / ((distance + 0.01) / COLOR_DARKEN_SCALE)))
+                #color = min(255, abs(255 / ((distance + 0.01) / COLOR_DARKEN_SCALE)))
                 texture = obj.image
-                texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
+                #texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
                 # scale texture to distance
                 proj_height = abs((SCREEN_DIST / (distance + 0.01)) * 100)
                 try:
@@ -371,6 +421,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
 
         gun.update()
         screen.blit(gun.image, gun.rect)
+
+        screen.blit(UiText.render("Health: " + str(player.health), True, (255, 255, 255)), (20, HEIGHT - 50))
+        screen.blit(UiText.render("Score: " + str(player.score), True, (255, 255, 255)), (WIDTH - 200, HEIGHT - 50))
 
         pg.display.flip()
 

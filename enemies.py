@@ -9,7 +9,7 @@ class caco(pg.sprite.Sprite):
         self.y = y
         self.speed = 30
         self.angle = 0
-        self.health = 1
+        self.health = 3
         self.dead = False
         self.attacking = False
         self.timePerFrame = 0.1

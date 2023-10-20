@@ -2,6 +2,7 @@ import tkinter as tk
 import game as main
 import settings
 import time
+import importlib
 
 with open("settings.txt", "r") as f:
     data = f.read().split()
@@ -21,6 +22,12 @@ titleLbl.pack()
 
 startBtn = tk.Button(root, text="Start Game", command=lambda: startGame())
 startBtn.pack()
+
+mapLbl = tk.Label(root, text="\nMap", font=("Arial", 15))
+mapLbl.pack()
+mapEntry = tk.Entry(root)
+mapEntry.pack()
+mapEntry.insert(0, "perimeter")
 
 screenDimensionsLbl = tk.Label(root, text="\nScreen Dimensions", font=("Arial", 15))
 screenDimensionsLbl.pack()
@@ -62,14 +69,13 @@ def startGame():
         f.write(str(width) + " " + str(height) + " " + str(resolutionScale) + " " + str(colorScale))
         f.close()
     print("Starting Game...")
+    # reimport main.py to reset variables
+    importlib.reload(main)
     # hide menu
     root.withdraw()
-    try:
-        main.main(settings.WIDTH, settings.HEIGHT, settings.RESOLUTION_SCALE, settings.FOV, settings.COLOR_DARKEN_SCALE)
-    except Exception as e:
-        print("\033[91m" + "Error: " + str(e) + "\033[0m")
-        main.pg.quit()
-        main.running = False
+    main.main(settings.WIDTH, settings.HEIGHT, settings.RESOLUTION_SCALE, settings.FOV, settings.COLOR_DARKEN_SCALE, str(mapEntry.get()))
+    main.pg.quit()
+    main.running = False
     # show menu
     print("\033[94m" + "Game Closed Successfully!" + "\033[0m")
     time.sleep(0.5)
