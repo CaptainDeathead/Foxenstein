@@ -3,12 +3,14 @@ from math import cos, sin, tan, pi
 import time
 from settings import *
 from enemies import *
+from random import randint
 
 pg.init()
 
 dt = 1
-
 debug = False
+
+UiText = pg.font.SysFont("Arial", 22)
 
 def get_texture(path, res=(TEXTURE_SIZE, TEXTURE_SIZE)):
     texture = pg.image.load(path)
@@ -38,6 +40,7 @@ class Player:
         self.fov = FOV
         self.move_speed = 5
         self.rot_speed = 0.05
+        self.health = 5
 
     def move(self, dx, dy):
         new_x = self.x + dx * dt * 32
@@ -126,10 +129,12 @@ class Player:
                     if debug:
                         l = pg.draw.line(screen, (255, 0, 255), (ox, oy), (x, y))
                         pg.display.update(l)
-                    return e
+                    return enemy
 
             x += grad[0] *distanceMultiplier
             y += grad[1] *distanceMultiplier
+
+        return None
     
 class Gun(pg.sprite.Sprite):
     def __init__(self):
@@ -208,8 +213,15 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
         pg.draw.rect(screen, (140, 100, 0), (0, HEIGHT/2, WIDTH, HEIGHT))
 
         for enemy in enemies:
-            if enemy.update(dt, player.x, player.y, objects):
-                player.dead = True
+            updateResult = enemy.update(dt, player.x, player.y, objects)
+            if updateResult > 0 and updateResult <= CACO_ATK_DIST:
+                player.health -= 1
+                if player.health <= 0:
+                    pg.quit()
+                    running = False
+
+        if running == False:
+            break
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -258,7 +270,8 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
             objHit = player.castGunRay(plainMap, enemies)
 
             if objHit != None:
-                enemies.pop(objHit)
+                objHit.x = randint(200, WIDTH - 200)
+                objHit.y = randint(200, HEIGHT - 200)
 
         if debug:
             for obj in objects:
@@ -328,7 +341,8 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
                 # change texture color based on distance
                 texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
 
-                screen.blit(texture, (y[2] + (WIDTH/2 - player.x) % RESOLUTION_SCALE // 32, HEIGHT/2 - proj_height/2))
+                #screen.blit(texture, (y[2] + (WIDTH/2 - player.x) % RESOLUTION_SCALE // 32, HEIGHT/2 - proj_height/2))
+                screen.blit(texture, ((y[2]), HEIGHT/2 - proj_height/2))
 
                 lastObj = y[4]
 
@@ -346,8 +360,12 @@ def main(width, height, resolution_scale, fov, color_darken_scale):
                 texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
                 # scale texture to distance
                 proj_height = abs((SCREEN_DIST / (distance + 0.01)) * 100)
-                texture = pg.transform.scale(texture, (obj.image.get_width() // 2 * int(proj_height) / 100, obj.image.get_height() // 2 * int(proj_height) / 100))
-                screen.blit(texture, (angle + (WIDTH/2 - player.x), HEIGHT/3))
+                try:
+                    texture = pg.transform.scale(texture, (obj.image.get_width() // 3 * int(proj_height) / 100, obj.image.get_height() // 3 * int(proj_height) / 100))
+                except:
+                    texture = pg.transform.scale(texture, (obj.image.get_width() *2, obj.image.get_height() *2))
+                    
+                screen.blit(texture, (angle, HEIGHT/3))
 
         RAY_HITS = RECTS_ON_SCREEN / (1200 / RESOLUTION_SCALE + 1) * 100
 

@@ -1,12 +1,13 @@
 import pygame as pg
 import math
+from settings import *
 
 class caco(pg.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
         self.x = x
         self.y = y
-        self.speed = 10
+        self.speed = 30
         self.angle = 0
         self.health = 1
         self.dead = False
@@ -47,7 +48,10 @@ class caco(pg.sprite.Sprite):
                     self.frame = 0
                     self.attacking = False
                     self.image = self.idle
-                    return True
+                    xDist = abs(px - self.x)
+                    yDist = abs(py - self.y)
+                    dist = math.sqrt(xDist**2 + yDist**2)
+                    return dist
                 else:
                     self.image = self.attackAnims[self.frame]
         else:
@@ -58,6 +62,13 @@ class caco(pg.sprite.Sprite):
         self.x += math.cos(playerAngle) * self.speed * dt
         self.y += math.sin(playerAngle) * self.speed * dt
 
+        xDist = abs(px - self.x)
+        yDist = abs(py - self.y)
+        dist = math.sqrt(xDist**2 + yDist**2)
+        
+        if dist <= CACO_ATK_DIST:
+            self.attacking = True
+
         for obj in objects:
             if self.x >= obj.x and self.x <= obj.x + obj.width and self.y >= obj.y and self.y <= obj.y + obj.height:
                 self.x -= math.cos(playerAngle) * self.speed * dt
@@ -66,7 +77,7 @@ class caco(pg.sprite.Sprite):
         
         self.rect.center = (self.x, self.y)
 
-        return False
+        return 0
 
     def attack(self):
         self.attacking = True
