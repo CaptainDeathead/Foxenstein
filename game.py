@@ -1,5 +1,5 @@
 import pygame as pg
-from math import cos, sin, tan, pi
+from math import cos, sin, tan, pi, sqrt
 import time
 from settings import *
 from enemies import *
@@ -59,6 +59,52 @@ class Player:
         for obj in objects:
             if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
                 return True
+            
+    def getDistance(self, x1, y1, x2, y2):
+        return sqrt((x2 - x1)**2 + (y2 - y1)**2)
+            
+    def drawRayBetterPerformance(self, angle, plainMap, objects):
+        x = int(self.x)
+        y = int(self.y)
+        grad = (cos(angle), sin(angle))
+
+        # Calculate the step size based on the orientation of the ray
+        step_x = 10 if grad[0] > 0 else -10
+        step_y = 10 if grad[1] > 0 else -10
+
+        # Determine the direction in which the ray moves on the x and y axis
+        #dx = -1 if grad[0] > 0 else 1
+        #dy = -1 if grad[1] > 0 else 1
+
+        dx = 1
+        dy = 1
+
+        # Adjust dx and dy based on the angle to fan out the rays
+        if abs(grad[0]) > abs(grad[1]):
+            dy *= abs(grad[1] / grad[0])
+        else:
+            dx *= abs(grad[0] / grad[1])
+
+        y_buff = []
+
+        while 0 < x < WIDTH and 0 < y < HEIGHT:
+            for e, obj in enumerate(objects):
+                if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
+                    if debug:
+                        l = pg.draw.line(screen, (255, 255, 255), (self.x, self.y), (x, y))
+                        pg.display.update(l)
+                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), obj, e, False))
+                    return y_buff
+
+            for e, enemy in enumerate(enemies):
+                if x > enemy.x - enemy.image.get_width() / 2 and x < enemy.x + enemy.image.get_width() / 2 and y > enemy.y - enemy.image.get_height() / 2 and y < enemy.y + enemy.image.get_height() / 2:
+                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), enemy, e, True))
+
+            x += step_x * dx
+            y += step_y * dy
+
+        return y_buff
+
 
     def drawRay(self, angle, plainMap, objects) -> int:
         x = int(self.x)
@@ -103,9 +149,16 @@ class Player:
         y_buff = []
         rayAngle = self.fov / self.num_rays # maybe a - 1 after num rays
 
+        if debug:
+            l = pg.draw.line(screen, (255, 255, 255), (self.x, self.y), (self.x + cos(self.rot - self.fov / 2) * 1000, self.y + sin(self.rot - self.fov / 2) * 1000))
+            pg.display.update(l)
+            l = pg.draw.line(screen, (255, 255, 255), (self.x, self.y), (self.x + cos(self.rot + self.fov / 2) * 1000, self.y + sin(self.rot + self.fov / 2) * 1000))
+            pg.display.update(l)
+
         for i in range(int(self.num_rays + 1)):
             #print((i+1)*rayAngle)
-            ret = self.drawRay((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
+            #ret = self.drawRay((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
+            ret = self.drawRayBetterPerformance((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
             #print((self.rot - self.fov / 2) + (i+1) * rayAngle * 57.2957795 * 21.333333333333)
             for distance, endPoint, obj, index, enemy in ret:
                 distance *= cos(self.rot - (self.rot - self.fov / 2) + (i) * rayAngle + pi/2)
@@ -207,7 +260,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
 
     gun = Gun()
 
-    enemies = [caco(500, 500), caco(1000, 500)]
+    enemies = [caco(500, 200), caco(1000, 500)]
 
     theme = pg.mixer.Sound("sounds/theme.mp3")
     enemyHurt = pg.mixer.Sound("sounds/npc_pain.wav")
@@ -321,6 +374,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                         enemies.remove(objHit)
                         enemies.append(caco(randint(100, WIDTH-100), randint(100, HEIGHT-100)))
                     else:
+                        ...
                         enemyHurt.play()
 
         if debug:
@@ -428,4 +482,5 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
         pg.display.flip()
 
 if __name__ == "__main__":
-    main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE)
+    #main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE, "perimeter")
+    main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE, "perimeter")
