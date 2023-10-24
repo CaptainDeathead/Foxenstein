@@ -5,6 +5,8 @@ from settings import *
 from enemies import *
 from random import randint
 import os
+import socket
+from os.path import isfile, join
 
 pg.init()
 
@@ -21,11 +23,20 @@ def get_texture(path, res=(TEXTURE_SIZE, TEXTURE_SIZE)):
     return texture
 
 def load_wall_textures():
-    return {
-        0: get_texture("textures/1.png"),
-        1: get_texture("textures/2.png"),
-        2: get_texture("textures/3.png")
-    }
+    textures = {}
+
+    onlyfiles = [f for f in os.listdir("textures") if isfile(join("textures", f))]
+
+    for i in range(len(onlyfiles)):
+        textures[i] = get_texture("textures/" + onlyfiles[i])
+
+    #return {
+    #    0: get_texture("textures/1.png"),
+    #    1: get_texture("textures/2.png"),
+    #    2: get_texture("textures/3.png")
+    #}
+
+    return textures
 
 objects = [pg.rect.Rect(0, 0, WIDTH, 100), pg.rect.Rect(WIDTH-100, 0, 100, HEIGHT), pg.rect.Rect(0, HEIGHT-100, WIDTH, 100), pg.rect.Rect(0, 0, 100, HEIGHT), pg.rect.Rect(200, 200, 100, 100), pg.rect.Rect(400, 600, 100, 25)]
 objectTypes = [0, 0, 0, 0, 1, 1]
@@ -50,15 +61,20 @@ class Player:
         new_x = self.x + dx * dt * 32
         new_y = self.y + dy * dt * 32
 
+        coll = self.checkCollision(new_x, new_y)
+        #print(coll)
+
         # Check if the new position is within the screen boundaries or doesn't collide with objects.
-        if 0 < new_x < WIDTH and 0 < new_y < HEIGHT and not self.checkCollision(new_x, new_y):
+        if 0 < new_x < WIDTH and 0 < new_y < HEIGHT and not coll:
             self.x = new_x
             self.y = new_y
 
     def checkCollision(self, x, y):
-        for obj in objects:
+        for i, obj in enumerate(objects):
             if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
                 return True
+
+        return False
             
     def getDistance(self, x1, y1, x2, y2):
         return sqrt((x2 - x1)**2 + (y2 - y1)**2)
@@ -242,6 +258,8 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     global COLOR_DARKEN_SCALE
 
     global enemies
+    global objects
+    global objectTypes
 
     WIDTH = width
     HEIGHT = height
@@ -437,10 +455,13 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                 if lastObj != y[4] or x_clip_start > texture.get_width():
                     x_clip_start = 0
                 else:
-                    texture = texture.subsurface((x_clip_start, 0, 1, TEXTURE_SIZE))
-                    x_clip_start += RESOLUTION_SCALE
+                    try:
+                        texture = texture.subsurface((x_clip_start, 0, 1, TEXTURE_SIZE))
+                        x_clip_start += RESOLUTION_SCALE
+                    except:
+                        pass
 
-                texture = pg.transform.scale(texture, (RESOLUTION_SCALE, int(proj_height)))
+                texture = pg.transform.scale(texture, (RESOLUTION_SCALE, min(5000, int(proj_height))))
 
                 # change texture color based on distance
                 texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
@@ -464,10 +485,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                 #texture.fill((color, color, color), special_flags=pg.BLEND_MULT)
                 # scale texture to distance
                 proj_height = abs((SCREEN_DIST / (distance + 0.01)) * 100)
-                try:
-                    texture = pg.transform.scale(texture, (obj.image.get_width() // 3 * int(proj_height) / 100, obj.image.get_height() // 3 * int(proj_height) / 100))
-                except:
-                    texture = pg.transform.scale(texture, (obj.image.get_width() *2, obj.image.get_height() *2))
+                texture = pg.transform.scale(texture, (min(5000, obj.image.get_width() // 3 * int(proj_height) / 100), min(5000, obj.image.get_height() // 3 * int(proj_height) / 100)))
                     
                 screen.blit(texture, (angle, HEIGHT/3))
 
@@ -480,6 +498,13 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
         screen.blit(UiText.render("Score: " + str(player.score), True, (255, 255, 255)), (WIDTH - 200, HEIGHT - 50))
 
         pg.display.flip()
+
+        if clock.get_fps() > 15 and RESOLUTION_SCALE > 3:
+            RESOLUTION_SCALE -= 1
+            player.num_rays = int(WIDTH)/RESOLUTION_SCALE
+        elif clock.get_fps() < 15:
+            RESOLUTION_SCALE += 1
+            player.num_rays = int(WIDTH)/RESOLUTION_SCALE
 
 if __name__ == "__main__":
     #main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE, "perimeter")

@@ -1,5 +1,6 @@
 import pygame as pg
 import os
+from os.path import isfile, join
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 
@@ -123,9 +124,16 @@ class Window:
         self.viewportBorder = 2
         self.viewportBorderColor = (255, 255, 255)
 
-        self.texture1 = pg.image.load("textures/1.png").convert_alpha()
-        self.texture2 = pg.image.load("textures/2.png").convert_alpha()
-        self.texture3 = pg.image.load("textures/3.png").convert_alpha()
+        #self.texture1 = pg.image.load("textures/1.png").convert_alpha()
+        #self.texture2 = pg.image.load("textures/2.png").convert_alpha()
+        #self.texture3 = pg.image.load("textures/3.png").convert_alpha()
+
+        self.textures = {}
+        self.onlyfiles = [f for f in os.listdir("textures") if isfile(join("textures", f))]
+        self.texturesLen = len(self.onlyfiles)
+
+        for i in range(len(self.onlyfiles)):
+            self.textures[i] = pg.image.load("textures/" + self.onlyfiles[i]).convert_alpha()
 
         self.treeX = 0
         self.currentTexture = 1
@@ -292,14 +300,14 @@ class Window:
 
             # scroll change texture
             elif event.type == pg.MOUSEBUTTONDOWN and event.button == 4:
-                if self.currentTexture == 3:
+                if self.currentTexture == self.texturesLen - 1:
                     self.currentTexture = 1
                 else:
                     self.currentTexture += 1
 
             elif event.type == pg.MOUSEBUTTONDOWN and event.button == 5:
                 if self.currentTexture == 1:
-                    self.currentTexture = 3
+                    self.currentTexture = self.texturesLen - 1
                 else:
                     self.currentTexture -= 1
 
@@ -340,14 +348,16 @@ class Window:
 
         for obj in self.objects:
             #pg.draw.rect(self.screen, self.objectColors[self.objects.index(obj)], obj)
-            if obj.texture == 1:
-                objTexture = pg.transform.scale(self.texture1, (obj.width, obj.height))
-            elif obj.texture == 2:
-                objTexture = pg.transform.scale(self.texture2, (obj.width, obj.height))
-            elif obj.texture == 3:
-                objTexture = pg.transform.scale(self.texture3, (obj.width, obj.height))
+            #if obj.texture == 1:
+            #    objTexture = pg.transform.scale(self.texture1, (obj.width, obj.height))
+            #elif obj.texture == 2:
+            #    objTexture = pg.transform.scale(self.texture2, (obj.width, obj.height))
+            #elif obj.texture == 3:
+            #    objTexture = pg.transform.scale(self.texture3, (obj.width, obj.height))
 
-            self.screen.blit(objTexture, (obj.x, obj.y))
+            #self.screen.blit(objTexture, (obj.x, obj.y))
+
+            self.screen.blit(pg.transform.scale(self.textures[obj.texture], (obj.width, obj.height)), (obj.x, obj.y))
 
         pg.display.flip()
 
