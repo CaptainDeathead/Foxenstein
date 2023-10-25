@@ -73,13 +73,14 @@ def startGame():
     importlib.reload(main)
     # hide menu
     root.withdraw()
+    print(str(mapEntry.get()))
     main.main(settings.WIDTH, settings.HEIGHT, settings.RESOLUTION_SCALE, settings.FOV, settings.COLOR_DARKEN_SCALE, str(mapEntry.get()))
     main.pg.quit()
     main.running = False
     # show menu
     print("\033[94m" + "Game Closed Successfully!" + "\033[0m")
     time.sleep(0.5)
-    root.deiconify()
+    exit()
 
 def setWidth():
     global width

@@ -7,6 +7,7 @@ from random import randint
 import os
 import socket
 from os.path import isfile, join
+from portal import Portal
 
 pg.init()
 
@@ -40,6 +41,10 @@ def load_wall_textures():
 
 objects = [pg.rect.Rect(0, 0, WIDTH, 100), pg.rect.Rect(WIDTH-100, 0, 100, HEIGHT), pg.rect.Rect(0, HEIGHT-100, WIDTH, 100), pg.rect.Rect(0, 0, 100, HEIGHT), pg.rect.Rect(200, 200, 100, 100), pg.rect.Rect(400, 600, 100, 25)]
 objectTypes = [0, 0, 0, 0, 1, 1]
+portals = []
+portalLocations = []
+
+used_names = []
 
 enemies = []
 
@@ -62,6 +67,11 @@ class Player:
         new_y = self.y + dy * dt * 32
 
         coll = self.checkCollision(new_x, new_y)
+        portalCollision = self.checkPortalCollision(new_x, new_y)
+
+        if portalCollision != None:
+            return portalCollision
+
         #print(coll)
 
         # Check if the new position is within the screen boundaries or doesn't collide with objects.
@@ -69,12 +79,19 @@ class Player:
             self.x = new_x
             self.y = new_y
 
-    def checkCollision(self, x, y):
+    def checkCollision(self, x, y) -> bool:
         for i, obj in enumerate(objects):
             if x > obj.x and x < obj.x + obj.width and y > obj.y and y < obj.y + obj.height:
                 return True
 
         return False
+    
+    def checkPortalCollision(self, x, y) -> str:
+        for i, portal in enumerate(portals):
+            if x > portal.x and x < portal.x + portal.width and y > portal.y and y < portal.y + portal.height:
+                return portalLocations[i]
+
+        return None
             
     def getDistance(self, x1, y1, x2, y2):
         return sqrt((x2 - x1)**2 + (y2 - y1)**2)
@@ -109,12 +126,20 @@ class Player:
                     if debug:
                         l = pg.draw.line(screen, (255, 255, 255), (self.x, self.y), (x, y))
                         pg.display.update(l)
-                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), obj, e, False))
+                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), obj, e, False, False))
                     return y_buff
 
             for e, enemy in enumerate(enemies):
                 if x > enemy.x - enemy.image.get_width() / 2 and x < enemy.x + enemy.image.get_width() / 2 and y > enemy.y - enemy.image.get_height() / 2 and y < enemy.y + enemy.image.get_height() / 2:
-                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), enemy, e, True))
+                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), enemy, e, True, False))
+
+            for e, portal in enumerate(portals):
+                if x > portal.x and x < portal.x + portal.width and y > portal.y and y < portal.y + portal.height:
+                    if debug:
+                        l = pg.draw.line(screen, (255, 255, 255), (self.x, self.y), (x, y))
+                        pg.display.update(l)
+                    y_buff.append((self.getDistance(self.x, self.y, x, y), (x, y), portal, e, False, True))
+                    return y_buff
 
             x += step_x * dx
             y += step_y * dy
@@ -140,7 +165,7 @@ class Player:
                         l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
                         pg.display.update(l)
 
-                    y_buff.append((i, (x, y), obj, e, False))
+                    y_buff.append((i, (x, y), obj, e, False, False))
                     return y_buff
 
             for e, enemy in enumerate(enemies):
@@ -149,7 +174,16 @@ class Player:
                         l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
                         pg.display.update(l)
 
-                    y_buff.append((i, (x, y), enemy, e, True))
+                    y_buff.append((i, (x, y), enemy, e, True, False))
+
+            for e, portal in enumerate(portals):
+                if x > portal.x and x < portal.x + portal.width and y > portal.y and y < portal.y + portal.height:
+                    if debug:
+                        l = pg.draw.line(screen, (255, 255, 255), (ox, oy), (x, y))
+                        pg.display.update(l)
+
+                    y_buff.append((i, (x, y), portal, e, False, True))
+                    return y_buff
 
             x += grad[0]
             y += grad[1]
@@ -176,9 +210,9 @@ class Player:
             #ret = self.drawRay((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
             ret = self.drawRayBetterPerformance((self.rot - self.fov / 2) + i * rayAngle, plainMap, objects)
             #print((self.rot - self.fov / 2) + (i+1) * rayAngle * 57.2957795 * 21.333333333333)
-            for distance, endPoint, obj, index, enemy in ret:
+            for distance, endPoint, obj, index, enemy, portal in ret:
                 distance *= cos(self.rot - (self.rot - self.fov / 2) + (i) * rayAngle + pi/2)
-                y_buff.append((distance, endPoint, (self.rot - self.fov / 2) + i * rayAngle * 57.2957795 * 13.25, obj, index, enemy))
+                y_buff.append((distance, endPoint, (self.rot - self.fov / 2) + i * rayAngle * 57.2957795 * 13.25, obj, index, enemy, portal))
 
         return y_buff
     
@@ -244,6 +278,37 @@ class Gun(pg.sprite.Sprite):
                 self.shooting = False
                 self.currentAnimation = 0
                 self.image = self.allAnimations[self.currentAnimation]
+
+def changeMap(portalColl):
+    global used_names
+    name = str(randint(0, 100000))
+    while name in used_names:
+        name = str(randint(0, 100000))
+    try:
+        with open(f"maps/{portalColl}.py", "r") as f:
+            data = f.read()
+            #print(data)
+            f.close()
+    except FileNotFoundError:
+        pg.quit()
+        return
+    
+    with open(f"tempMapLoader{name}.py", "w") as f:
+        f.write(data)
+        f.close()
+
+    #__import__(f"tempMapLoader{name}")
+    # import as tempMapLoader
+    tempMapLoader = __import__(f"tempMapLoader{name}")
+
+    objects, objectTypes, portals, portalLocations = tempMapLoader.loadMap()
+    print(len(objects))
+
+    enemies = [caco(500, 200), caco(1000, 500)]
+
+    os.remove("tempMapLoader" + name + ".py")
+
+    return objects, objectTypes, portals, portalLocations, enemies
     
 def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     global dt
@@ -260,6 +325,8 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     global enemies
     global objects
     global objectTypes
+    global portals
+    global portalLocations
 
     WIDTH = width
     HEIGHT = height
@@ -302,7 +369,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
 
     import tempGameLoader
 
-    objects, objectTypes = tempGameLoader.loadMap()
+    objects, objectTypes, portals, portalLocations = tempGameLoader.loadMap()
+
+    portalTexture = pg.image.load("specialTextures/portal.png").convert_alpha()
 
     os.remove("tempGameLoader.py")
 
@@ -360,7 +429,19 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
             dx = player.move_speed * cos(player.rot + pi/2)
             dy = player.move_speed * sin(player.rot + pi/2)
 
-        player.move(dx, dy)
+        portalColl = player.move(dx, dy)
+
+        if portalColl != None:
+            #objects, objectTypes, portals, portalLocations, enemies = changeMap(portalColl)
+            objects = []
+            objectTypes = []
+            portals = []
+            portalLocations = []
+            enemies = []
+            objects, objectTypes, portals, portalLocations, enemies = changeMap(portalColl)
+            print(len(objects))
+
+        #print(len(objects))
 
         if keys[pg.K_LEFT]:
             player.rot -= player.rot_speed * dt * 32
@@ -431,6 +512,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                 # y[3] = object
                 # y[4] = object index
                 # y[5] = enemy
+                # y[6] = portal
+
+                isPortal = False
 
                 if y[5]:
                     if y[3].dead or y[3] in enemiesEx:
@@ -440,6 +524,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                     enemiesEx.append(y[3])
                     continue
 
+                if y[6]:
+                    isPortal = True
+
                 proj_height = abs((SCREEN_DIST / (y[0] + 0.01)) * 100)
 
                 color = min(255, abs(255 / ((y[0] + 0.01) / COLOR_DARKEN_SCALE)))
@@ -447,7 +534,10 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                 #pg.draw.rect(screen, (color, color, color), (y[2], HEIGHT/2 + proj_height/2, RESOLUTION_SCALE, abs(proj_height)))
 
                 # draw textures
-                texture = textures[objectTypes[y[4]]]
+                if isPortal:
+                    texture = portalTexture
+                else:
+                    texture = textures[objectTypes[y[4]]]
 
                 # clip texture x to resolution scale
                 #texture = texture.subsurface((int(y[0] * 0.1) % TEXTURE_SIZE, 0, 1, TEXTURE_SIZE))

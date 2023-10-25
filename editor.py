@@ -3,6 +3,7 @@ import os
 from os.path import isfile, join
 import tkinter as tk
 from tkinter import simpledialog, messagebox
+from portal import Portal
 
 class Square(pg.Rect):
     def __init__(self, x, y, width, height, texture=1):
@@ -12,14 +13,6 @@ class Square(pg.Rect):
         self.height = height
         self.texture = texture
         self.texturePath = "textures/1.png"
-
-class Portal(pg.Rect):
-    def __init__(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.texturePath = pg.image.load("specialTextures/portal.png").convert_alpha()
 
 class TreeButton(pg.Rect):
     def __init__(self, name, obj, position, size):
@@ -171,20 +164,32 @@ class Window:
         root = tk.Tk()
 
         root.title("Plazma Engine: Help")
-        root.geometry("400x600")
+        root.geometry("500x600")
 
         titleLbl = tk.Label(root, text="Help", font=("Arial", 20))
         titleLbl.pack()
 
+        brandLbl = tk.Label(root, text="Plazma Game Engine\n", font=("Arial", 10) , foreground="grey")
+        brandLbl.pack()
+
         actions = [
-            "'L-Click': Select UI elements and add objects",
-            "'Shift + L-Click': Place an object with advanced config (options menu)",
-            "'R-Click': Remove an object or portal",
-            "'Shift + R-Click': Edit an object or portal with advanced config (options menu)",
-            "'Alt + L-Click': Place a portal",
-            "'Shift + Alt + L-Click': Place a portal with advanced config (options menu)"
-            "'H': Bring up this menu"
+            "   'L-Click': Select UI elements and add objects",
+            "   'Shift + L-Click': Place an object with advanced config (options menu)",
+            "   'R-Click': Remove an object or portal",
+            "   'Shift + R-Click': Edit an object or portal with advanced config (options menu)",
+            "   'Alt + L-Click': Place a portal",
+            "   'Shift + Alt + L-Click': Place a portal with advanced config (options menu)",
+            "   'H': Bring up this menu",
+            "   'L': Load a map",
+            "   '`': Pack your map",
+            "   'Esc': Exit"
         ]
+
+        for action in actions:
+            actionLbl = tk.Label(root, text=action, font=("Arial", 10))
+            actionLbl.pack(anchor="w")
+
+        root.mainloop()
 
     def packGame(self, debug=False):
         root = tk.Tk()
@@ -259,6 +264,8 @@ class Window:
         self.objects = []
         self.objectColors = []
         self.treeButtons = []
+        self.portals = []
+        self.portalLocations = []
 
         self.currentTreePosition = 0
 
@@ -267,6 +274,9 @@ class Window:
             f.close()
 
         import temp
+
+        self.treeX = 0
+        self.currentTexture = 1
         
         objects, objectTypes, portals, portalLocations = temp.loadMap()
 
