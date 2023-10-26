@@ -7,7 +7,7 @@ objects = [pg.Rect(0, 0, 100, 100), pg.Rect(100, 0, 100, 100), pg.Rect(200, 0, 1
 objectTypes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
 
 portals = [pg.Rect(100, 350, 100, 100), pg.Rect(1000, 350, 100, 100)]
-portalLocations = ['perimeter', 'maze']
+portalLocations = ['perimeterPortals', 'maze']
 
 def loadMap():
     return objects, objectTypes, portals, portalLocations

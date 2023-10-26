@@ -4,6 +4,10 @@ from os.path import isfile, join
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 from portal import Portal
+from random import randint
+import sys
+
+sys.dont_write_bytecode = True
 
 class Square(pg.Rect):
     def __init__(self, x, y, width, height, texture=1):
@@ -138,6 +142,8 @@ class Window:
         self.portals = []
         self.portalLocations = []
 
+        self.chosenNums = []
+
         #self.texture1 = pg.image.load("textures/1.png").convert_alpha()
         #self.texture2 = pg.image.load("textures/2.png").convert_alpha()
         #self.texture3 = pg.image.load("textures/3.png").convert_alpha()
@@ -157,6 +163,8 @@ class Window:
             self.clock.tick(self.fps)
 
             self.events()
+            if not self.running:
+                break
             self.update()
             self.draw()
 
@@ -268,12 +276,15 @@ class Window:
         self.portalLocations = []
 
         self.currentTreePosition = 0
+        num = randint(0, 100000)
+        while num in self.chosenNums:
+            num = randint(0, 100000)
 
-        with open("temp.py", "w") as f:
+        with open(f"temp{num}.py", "w") as f:
             f.write(data)
             f.close()
 
-        import temp
+        temp = __import__(f"temp{num}")
 
         self.treeX = 0
         self.currentTexture = 1
@@ -300,7 +311,7 @@ class Window:
             self.treeButtons.append(TreeButton("Square", self.objects[-1], (self.treeX, self.currentTreePosition), self.BUTTON_SIZE))
             self.currentTreePosition += 15
 
-        os.remove("temp.py")
+        os.remove(f"temp{num}.py")
 
         messagebox.showinfo("Loaded", f"Loaded: {os.getcwd()}/{filePath}", icon="info")
 
@@ -316,6 +327,8 @@ class Window:
 
             if keys[pg.K_ESCAPE]:
                 self.running = False
+                pg.quit()
+                break
 
             elif keys[pg.K_BACKQUOTE]:
                 self.packGame(debug=True)

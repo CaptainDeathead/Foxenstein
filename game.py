@@ -8,6 +8,9 @@ import os
 import socket
 from os.path import isfile, join
 from portal import Portal
+import sys
+
+sys.dont_write_bytecode = True
 
 pg.init()
 
@@ -433,12 +436,23 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
 
         if portalColl != None:
             #objects, objectTypes, portals, portalLocations, enemies = changeMap(portalColl)
+            oldMap = gameMap
             objects = []
             objectTypes = []
             portals = []
             portalLocations = []
             enemies = []
             objects, objectTypes, portals, portalLocations, enemies = changeMap(portalColl)
+            
+            connectedPortal = None
+            for i, portalLocation in enumerate(portalLocations):
+                if portalLocation == oldMap:
+                    connectedPortal = portals[i]
+                    break
+
+            player.x = connectedPortal.x
+            player.y = connectedPortal.y-connectedPortal.height - 10
+
             print(len(objects))
 
         #print(len(objects))

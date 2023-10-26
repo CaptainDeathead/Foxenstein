@@ -3,6 +3,11 @@ import game as main
 import settings
 import time
 import importlib
+import sys
+from editor import GameEngine
+import os
+
+sys.dont_write_bytecode = True
 
 with open("settings.txt", "r") as f:
     data = f.read().split()
@@ -23,11 +28,14 @@ titleLbl.pack()
 startBtn = tk.Button(root, text="Start Game", command=lambda: startGame())
 startBtn.pack()
 
+editorBtn = tk.Button(root, text="Open Editor", command=lambda: startEditor())
+editorBtn.pack()
+
 mapLbl = tk.Label(root, text="\nMap", font=("Arial", 15))
 mapLbl.pack()
 mapEntry = tk.Entry(root)
 mapEntry.pack()
-mapEntry.insert(0, "perimeter")
+mapEntry.insert(0, "perimeterPortals")
 
 screenDimensionsLbl = tk.Label(root, text="\nScreen Dimensions", font=("Arial", 15))
 screenDimensionsLbl.pack()
@@ -79,8 +87,18 @@ def startGame():
     main.running = False
     # show menu
     print("\033[94m" + "Game Closed Successfully!" + "\033[0m")
-    time.sleep(0.5)
     exit()
+
+def startEditor():
+    print("\033[95m" + "Withdrawing Menu..." + "\033[0m")
+    root.withdraw()
+    print("Starting Editor...")
+    os.system("python editor.py")
+    exit()
+    #game = GameEngine()
+    time.sleep(0.5)
+    print("\033[94m" + "Editor Closed Successfully!" + "\033[0m")
+    root.deiconify()
 
 def setWidth():
     global width
