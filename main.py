@@ -175,4 +175,8 @@ def setColorDarkenScale():
     colorScale = int(colorDarkenScaleEntry.get())
     print("\033[93mColor Darken Scale set to " + str(settings.COLOR_DARKEN_SCALE) + "\033[0m")
 
-root.mainloop()
+#root.mainloop()
+
+if __name__ == "__main__":
+    os.system("python updater.py")
+    sys.exit()
