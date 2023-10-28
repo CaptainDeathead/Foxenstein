@@ -9,6 +9,7 @@ import socket
 from os.path import isfile, join
 from portal import Portal
 import sys
+from client import Client
 
 sys.dont_write_bytecode = True
 
@@ -313,7 +314,7 @@ def changeMap(portalColl):
 
     return objects, objectTypes, portals, portalLocations, enemies
     
-def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
+def main(width, height, resolution_scale, fov, color_darken_scale, gameMap, fps, network, name):
     global dt
     global RECTS_ON_SCREEN
     global RAY_HITS
@@ -321,9 +322,13 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     
     global WIDTH
     global HEIGHT
+    global FPS
     global RESOLUTION_SCALE
     global FOV
     global COLOR_DARKEN_SCALE
+
+    global NETWORK
+    global NAME
 
     global enemies
     global objects
@@ -336,6 +341,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     RESOLUTION_SCALE = resolution_scale
     FOV = fov
     COLOR_DARKEN_SCALE = color_darken_scale
+    FPS = fps
+    NETWORK = network
+    NAME = name
 
     screen = pg.display.set_mode((WIDTH, HEIGHT), pg.DOUBLEBUF | pg.HWACCEL)
     pg.display.set_caption("Foxenstine")
@@ -349,6 +357,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
     gun = Gun()
 
     enemies = [caco(500, 200), caco(1000, 500)]
+    addresses = []
 
     theme = pg.mixer.Sound("sounds/theme.mp3")
     enemyHurt = pg.mixer.Sound("sounds/npc_pain.wav")
@@ -378,6 +387,25 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
 
     os.remove("tempGameLoader.py")
 
+    if NETWORK != None:
+        client = Client(NETWORK, player.x, player.y, player.rot, gameMap)
+        response = client.listen(player.x, player.y, player.rot, gameMap, True, name)
+        while response == None:
+            response = client.listen(player.x, player.y, player.rot, gameMap, False, name)
+
+        enemies = []
+
+        response = eval(response)
+
+        for enemy in response:
+            address = enemy.split(",")[0]
+            x = int(enemy.split(",")[1])
+            y = int(enemy.split(",")[2])
+            enemies.append(caco(x, y))
+            addresses.append(address)
+
+    print(NETWORK)
+
     clock = pg.time.Clock()
     running = True
     while running:
@@ -392,14 +420,44 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
         pg.draw.rect(screen, (0, 100, 255), (0, 0, WIDTH, HEIGHT/2))
         pg.draw.rect(screen, (140, 100, 0), (0, HEIGHT/2, WIDTH, HEIGHT))
 
-        for enemy in enemies:
-            updateResult = enemy.update(dt, player.x, player.y, objects)
-            if updateResult > 0 and updateResult <= CACO_ATK_DIST:
-                player.health -= 1
-                playerPain.play()
-                if player.health <= 0:
+        if NETWORK != None:
+            response = []
+            response = client.sendUpdate(player.x, player.y, player.rot, gameMap)
+            if response != None:
+                try:
+                    response = eval(response)
+                except:
+                    print("You died or the server crashed!")
                     pg.quit()
                     running = False
+                    break
+                enemies = []
+                for enemy in response:
+                    name = enemy.split(",")[0]
+                    x = float(enemy.split(",")[1])
+                    y = float(enemy.split(",")[2])
+                    rot = float(enemy.split(",")[3])
+                    mapEnemy = enemy.split(",")[4]
+                    health = int(enemy.split(",")[5])
+
+                    if mapEnemy != gameMap:
+                        continue
+
+                    if x == player.x and y == player.y:
+                        player.health = health
+                        continue
+
+                    enemies.append(soldier(x, y, health))
+            #pg.time.delay(1000)
+        else:
+            for enemy in enemies:
+                updateResult = enemy.update(dt, player.x, player.y, objects)
+                if updateResult > 0 and updateResult <= CACO_ATK_DIST:
+                    player.health -= 1
+                    playerPain.play()
+                    if player.health <= 0:
+                        pg.quit()
+                        running = False
 
         if running == False:
             break
@@ -478,7 +536,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                 gun.shooting = True
                 objHit = player.castGunRay(plainMap, objects, enemies)
 
-                if objHit != None:
+                if objHit != None and NETWORK == None:
                     objHit.health -= 1
                     if objHit.health <= 0:
                         enemyDeath.play()
@@ -489,6 +547,9 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                     else:
                         ...
                         enemyHurt.play()
+                elif objHit != None and NETWORK != None:
+                    #print(addresses)
+                    client.sendShootPlayer(addresses[enemies.index(objHit)])
 
         if debug:
             for obj in objects:
@@ -591,7 +652,10 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
                 proj_height = abs((SCREEN_DIST / (distance + 0.01)) * 100)
                 texture = pg.transform.scale(texture, (min(5000, obj.image.get_width() // 3 * int(proj_height) / 100), min(5000, obj.image.get_height() // 3 * int(proj_height) / 100)))
                     
-                screen.blit(texture, (angle, HEIGHT/3))
+                if NETWORK != None:
+                    screen.blit(texture, (angle, max(HEIGHT/2, HEIGHT/2 - proj_height/2 + 75)))
+
+                else: screen.blit(texture, (angle, HEIGHT/3))
 
         RAY_HITS = RECTS_ON_SCREEN / (1200 / RESOLUTION_SCALE + 1) * 100
 
@@ -603,13 +667,13 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap):
 
         pg.display.flip()
 
-        if clock.get_fps() > 15 and RESOLUTION_SCALE > 3:
-            RESOLUTION_SCALE -= 1
-            player.num_rays = int(WIDTH)/RESOLUTION_SCALE
-        elif clock.get_fps() < 15:
-            RESOLUTION_SCALE += 1
-            player.num_rays = int(WIDTH)/RESOLUTION_SCALE
+        #if clock.get_fps() > FPS and RESOLUTION_SCALE > 3:
+        #    RESOLUTION_SCALE -= 1
+        #    player.num_rays = int(WIDTH)/RESOLUTION_SCALE
+        #elif clock.get_fps() < FPS:
+        #    RESOLUTION_SCALE += 1
+        #    player.num_rays = int(WIDTH)/RESOLUTION_SCALE
 
 if __name__ == "__main__":
     #main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE, "perimeter")
-    main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE, "perimeter")
+    main(WIDTH, HEIGHT, RESOLUTION_SCALE, FOV, COLOR_DARKEN_SCALE, "perimeter", FPS, sys.argv[1], "Player")

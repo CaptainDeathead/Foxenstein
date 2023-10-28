@@ -13,14 +13,17 @@ with open("settings.txt", "r") as f:
     data = f.read().split()
     f.close()
 
+network = ""
 width = data[0]
 height = data[1]
-resolutionScale = data[2]
-colorScale = data[3]
+fps = data[2]
+resolutionScale = data[3]
+colorScale = data[4]
+name = data[5]
 
 root = tk.Tk()
 root.title("Plazma 3D Menu")
-root.geometry("400x600")
+root.geometry("400x800")
 
 titleLbl = tk.Label(root, text="Plazma 3D Menu", font=("Arial", 20))
 titleLbl.pack()
@@ -37,6 +40,17 @@ mapEntry = tk.Entry(root)
 mapEntry.pack()
 mapEntry.insert(0, "perimeterPortals")
 
+nameLbl = tk.Label(root, text="\nName", font=("Arial", 15))
+nameLbl.pack()
+nameEntry = tk.Entry(root)
+nameEntry.pack()
+nameEntry.insert(0, name)
+
+serverIpLbl = tk.Label(root, text="\nServer IP", font=("Arial", 15))
+serverIpLbl.pack()
+serverIpEntry = tk.Entry(root)
+serverIpEntry.pack()
+
 screenDimensionsLbl = tk.Label(root, text="\nScreen Dimensions", font=("Arial", 15))
 screenDimensionsLbl.pack()
 
@@ -51,6 +65,13 @@ heightLbl.pack()
 heightEntry = tk.Entry(root)
 heightEntry.pack()
 heightEntry.insert(0, str(height))
+
+fpsLbl = tk.Label(root, text="\nFPS", font=("Arial", 15))
+fpsLbl.pack()
+
+fpsEntry = tk.Entry(root)
+fpsEntry.pack()
+fpsEntry.insert(0, str(fps))
 
 resolutionScaleLbl = tk.Label(root, text="\nResolution Scale", font=("Arial", 15))
 resolutionScaleLbl.pack()
@@ -68,13 +89,16 @@ colorDarkenScaleEntry.insert(0, str(colorScale))
 
 def startGame():
     print("\033[95m" + "Setting Up Variables..." + "\033[0m")
+    setName()
+    setNetwork()
     setScreenDimensions()
+    setFPS()
     setResolutionScale()
     #setFOV()
     setColorDarkenScale()
     print("\033[94m" + "Writing preferences to 'settings.txt'" + "\033[0m")
     with open("settings.txt", "w") as f:
-        f.write(str(width) + " " + str(height) + " " + str(resolutionScale) + " " + str(colorScale))
+        f.write(str(width) + " " + str(height) + " " + str(fps) + " " + str(resolutionScale) + " " + str(colorScale) + " " + str(name))
         f.close()
     print("Starting Game...")
     # reimport main.py to reset variables
@@ -82,7 +106,8 @@ def startGame():
     # hide menu
     root.withdraw()
     print(str(mapEntry.get()))
-    main.main(settings.WIDTH, settings.HEIGHT, settings.RESOLUTION_SCALE, settings.FOV, settings.COLOR_DARKEN_SCALE, str(mapEntry.get()))
+    if settings.NETWORK == "": settings.NETWORK = None
+    main.main(settings.WIDTH, settings.HEIGHT, settings.RESOLUTION_SCALE, settings.FOV, settings.COLOR_DARKEN_SCALE, str(mapEntry.get()), settings.FPS, settings.NETWORK, settings.NAME)
     main.pg.quit()
     main.running = False
     # show menu
@@ -100,6 +125,18 @@ def startEditor():
     print("\033[94m" + "Editor Closed Successfully!" + "\033[0m")
     root.deiconify()
 
+def setName():
+    global name
+    settings.NAME = str(nameEntry.get())
+    name = str(nameEntry.get())
+    print("\033[93mName set to " + str(name) + "\033[0m")
+
+def setNetwork():
+    global network
+    settings.NETWORK = str(serverIpEntry.get())
+    network = str(serverIpEntry.get())
+    print("\033[93mNetwork set to " + str(settings.NETWORK) + "\033[0m")
+
 def setWidth():
     global width
     settings.WIDTH = int(widthEntry.get())
@@ -115,6 +152,12 @@ def setHeight():
 def setScreenDimensions():
     setWidth()
     setHeight()
+
+def setFPS():
+    global fps
+    settings.FPS = int(fpsEntry.get())
+    fps = int(fpsEntry.get())
+    print("\033[93mFPS set to " + str(settings.FPS) + "\033[0m")
 
 def setResolutionScale():
     global resolutionScale
