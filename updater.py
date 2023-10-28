@@ -1,7 +1,6 @@
 import requests
-from bs4 import BeautifulSoup
-import os
 import sys
+import os
 
 print("Checking for updates...")
 
@@ -18,7 +17,13 @@ print("This version: " + __version__)
 
 if version == __version__:
     print("No update available")
-    exit()
+    print("Done! Restarting...")
+
+    #subprocess.Popen(["python", "main.py", "--no-update"])
+    #sys.exit()
+
+    os.system("python main.py --no-update")
+    sys.exit()
 
 print("Update available!")
 print("Getting update...")
@@ -43,5 +48,7 @@ for line in changelog:
 
 print("Done! Restarting...")
 
+#subprocess.Popen(["python", "main.py", "--no-update"])
+#sys.exit()
 os.system("python main.py --no-update")
 sys.exit()

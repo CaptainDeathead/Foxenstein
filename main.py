@@ -24,6 +24,7 @@ name = data[5]
 root = tk.Tk()
 root.title("Plazma 3D Menu")
 root.geometry("400x800")
+root.protocol("WM_DELETE_WINDOW", lambda: sys.exit())
 
 titleLbl = tk.Label(root, text="Plazma 3D Menu", font=("Arial", 20))
 titleLbl.pack()
@@ -178,9 +179,7 @@ def setColorDarkenScale():
 #root.mainloop()
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--no-update":
-            root.mainloop()
-            sys.exit()
-    os.system("python updater.py")
-    sys.exit()
+    if (len(sys.argv) > 1 and not sys.argv[1] == "--no-update") or len(sys.argv) == 1:
+        os.system("python updater.py")
+        exit()
+    root.mainloop()

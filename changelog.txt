@@ -1,2 +1,14 @@
-version.txt
+changelog.txt
+client.py
+editor.py
+enemies.py
+game.py
+main.py
+portal.py
+README.md
+run.bat
+server.py
+settings.py
+settings.txt
 updater.py
+version.txt
