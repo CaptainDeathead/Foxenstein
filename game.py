@@ -61,7 +61,7 @@ class Player:
         self.rot = rot
         self.num_rays = num_rays
         self.fov = FOV
-        self.move_speed = 2.5
+        self.move_speed = 8
         self.rot_speed = 0.05
         self.health = 5
         self.score = 0
@@ -418,7 +418,8 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap, fps,
         lastDt = time.time()
 
         pg.draw.rect(screen, (0, 100, 255), (0, 0, WIDTH, HEIGHT/2))
-        pg.draw.rect(screen, (140, 100, 0), (0, HEIGHT/2, WIDTH, HEIGHT))
+        #pg.draw.rect(screen, (140, 100, 0), (0, HEIGHT/2, WIDTH, HEIGHT))
+        pg.draw.rect(screen, (100, 100, 100), (0, HEIGHT/2, WIDTH, HEIGHT))
 
         if NETWORK != None:
             response = []
@@ -525,7 +526,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap, fps,
         elif player.rot < -(pi*2):
             player.rot = 0
 
-        if keys[pg.K_LSHIFT] and lastSwitch < time.time() - 0.5:
+        if (keys[pg.K_LSHIFT] or keys[pg.K_RSHIFT]) and lastSwitch < time.time() - 0.5:
             global debug
             debug = not debug
             lastSwitch = time.time()

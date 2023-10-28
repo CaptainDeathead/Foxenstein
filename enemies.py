@@ -7,7 +7,7 @@ class caco(pg.sprite.Sprite):
         super().__init__()
         self.x = x
         self.y = y
-        self.speed = 30
+        self.speed = 120
         self.angle = 0
         self.health = 3
         self.dead = False
