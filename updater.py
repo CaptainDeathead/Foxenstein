@@ -43,5 +43,5 @@ for line in changelog:
 
 print("Done! Restarting...")
 
-os.system("python main.py")
+os.system("python main.py --no-update")
 sys.exit()
