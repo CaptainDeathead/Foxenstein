@@ -38,13 +38,18 @@ for line in changelog:
     if line == "":
         continue
     else:
-        print(f"Getting {line}")
-        r = requests.get(f"https://raw.githubusercontent.com/CaptainDeathead/Plazma-Engine/main/{line}")
-        print(f"Writing to {line}")
-        with open(line, "w") as f:
-            f.write(r.text)
-            f.close()
-        print(f"Done writing to {line}")
+        try:
+            print(f"Getting {line}")
+            r = requests.get(f"https://raw.githubusercontent.com/CaptainDeathead/Plazma-Engine/main/{line}")
+            print(f"Writing to {line}")
+            with open(line, "w") as f:
+                f.write(r.text)
+                f.close()
+            print(f"Done writing to {line}")
+        except:
+            print(f"Error getting {line}")
+            print("Continuing anyway...")
+            continue
 
 print("Done! Restarting...")
 
