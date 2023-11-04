@@ -425,12 +425,12 @@ class Window:
             # scroll change texture
             elif event.type == pg.MOUSEBUTTONDOWN and event.button == 4:
                 if self.currentTexture == self.texturesLen - 1:
-                    self.currentTexture = 1
+                    self.currentTexture = 0
                 else:
                     self.currentTexture += 1
 
             elif event.type == pg.MOUSEBUTTONDOWN and event.button == 5:
-                if self.currentTexture == 1:
+                if self.currentTexture == 0:
                     self.currentTexture = self.texturesLen - 1
                 else:
                     self.currentTexture -= 1

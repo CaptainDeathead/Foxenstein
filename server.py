@@ -35,7 +35,7 @@ class Client:
 
 class Server:
     def __init__(self, numPlayers):
-        self.host = '192.168.0.30'
+        self.host = '0.0.0.0'
         self.port = 31415
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((self.host, self.port))

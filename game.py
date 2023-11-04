@@ -221,7 +221,7 @@ class Player:
         return y_buff
     
     def castGunRay(self, plainMap, objects, enemies):
-        rayAngle = self.rot
+        rayAngle = self.rot + self.fov / 10
         x = int(self.x)
         y = int(self.y)
 
@@ -613,7 +613,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap, fps,
                 if isPortal:
                     texture = portalTexture
                 else:
-                    texture = textures[objectTypes[y[4]]]
+                    texture = textures[objectTypes[y[4]]+1]
 
                 # clip texture x to resolution scale
                 #texture = texture.subsurface((int(y[0] * 0.1) % TEXTURE_SIZE, 0, 1, TEXTURE_SIZE))
