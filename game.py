@@ -459,6 +459,12 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap, fps,
                     if player.health <= 0:
                         pg.quit()
                         running = False
+                if updateResult > 0 and updateResult <= GOOF_ATK_DIST:
+                    player.health -= 1
+                    playerPain.play()
+                    if player.health <= 0:
+                        pg.quit()
+                        running = False
 
         if running == False:
             break
@@ -544,7 +550,7 @@ def main(width, height, resolution_scale, fov, color_darken_scale, gameMap, fps,
                         objHit.dead = True
                         player.score += 1
                         enemies.remove(objHit)
-                        enemies.append(caco(randint(100, WIDTH-100), randint(100, HEIGHT-100)))
+                        enemies.append(goof(randint(100, WIDTH-100), randint(100, HEIGHT-100)))
                     else:
                         ...
                         enemyHurt.play()
