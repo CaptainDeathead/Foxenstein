@@ -1,3 +1,3 @@
-﻿# Plazma-Engine
+﻿# Plazma-Doom
 
-## A 3d game engine / game
+## A 2d raycast engine / game
